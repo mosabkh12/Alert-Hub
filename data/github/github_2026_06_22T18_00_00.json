@@ -1,0 +1,14 @@
+[
+  {
+    "manager_id": "1001",
+    "projects": "alert-hub",
+    "assignee": "backend",
+    "label": "bug",
+    "developer_id": "2001",
+    "issue": "GH-101",
+    "environment": "development",
+    "user_story": "Fix loader scanning",
+    "point": 3,
+    "sprint": "Sprint 1"
+  }
+]

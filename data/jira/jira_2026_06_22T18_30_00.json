@@ -1,0 +1,14 @@
+[
+  {
+    "reporter_id": "1002",
+    "project_key": "ALERT",
+    "assignee_name": "frontend",
+    "issue_type": "enhancement",
+    "assignee_id": "2002",
+    "issue_key": "ALERT-55",
+    "environment_name": "staging",
+    "story_summary": "Improve action scheduling flow",
+    "story_points": 5,
+    "sprint_name": "Sprint 2"
+  }
+]
