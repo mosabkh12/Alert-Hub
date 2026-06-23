@@ -14,4 +14,6 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
     List<Action> findByIsDeletedFalse();
 
     List<Action> findByUserIdAndIsDeletedFalse(Long userId);
+
+    List<Action> findByIsEnabledTrueAndIsDeletedFalse();
 }

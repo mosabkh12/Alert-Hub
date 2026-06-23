@@ -1,5 +1,7 @@
 package com.alerthub.actionservice.service;
 
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import com.alerthub.actionservice.entity.Action;
 import com.alerthub.actionservice.repository.ActionRepository;
 import org.springframework.stereotype.Service;
@@ -85,5 +87,69 @@ public class ActionService {
     }
 
     actionJobProducer.sendActionJob(actionId);
-}
+    }
+    public int queueDueActions() {
+    LocalDateTime now = LocalDateTime.now()
+            .withSecond(0)
+            .withNano(0);
+
+    int queuedActions = 0;
+
+    List<Action> activeActions =
+            actionRepository.findByIsEnabledTrueAndIsDeletedFalse();
+
+    for (Action action : activeActions) {
+        if (!isDueNow(action, now)) {
+            continue;
+        }
+
+        actionJobProducer.sendActionJob(action.getId());
+
+        action.setLastRun(now);
+        actionRepository.save(action);
+
+        queuedActions++;
+    }
+
+        return queuedActions;
+    }
+
+    private boolean isDueNow(Action action, LocalDateTime now) {
+        if (!matchesDay(action.getRunOnDay(), now.getDayOfWeek())) {
+            return false;
+        }
+
+        if (action.getRunOnTime() == null) {
+            return false;
+        }
+
+        boolean sameScheduledTime =
+                action.getRunOnTime().getHour() == now.getHour()
+                        && action.getRunOnTime().getMinute() == now.getMinute();
+
+        if (!sameScheduledTime) {
+            return false;
+        }
+
+        if (action.getLastRun() == null) {
+            return true;
+        }
+
+        return !action.getLastRun()
+                .withSecond(0)
+                .withNano(0)
+                .equals(now);
+    }
+
+    private boolean matchesDay(String runOnDay, DayOfWeek currentDay) {
+        if (runOnDay == null || runOnDay.isBlank()) {
+            return false;
+        }
+
+        if ("All".equalsIgnoreCase(runOnDay)) {
+            return true;
+        }
+
+        return runOnDay.equalsIgnoreCase(currentDay.name());
+    }
 }
