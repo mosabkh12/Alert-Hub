@@ -23,27 +23,27 @@ public class ActionJobConsumer {
             groupId = "processor-service"
     )
     public void consumeActionJob(String actionIdText) {
+        Long actionId;
+
         try {
-            Long actionId = Long.parseLong(actionIdText);
-
-            log.info(
-                    "Received action job from Kafka. Action id: {}",
-                    actionId
-            );
-
-            processorService.processAction(actionId);
-
-            log.info(
-                    "Action job processed successfully. Action id: {}",
-                    actionId
-            );
-
-        } catch (Exception exception) {
-            log.error(
-                    "Failed to process Kafka action job: {}",
-                    actionIdText,
+            actionId = Long.parseLong(actionIdText);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(
+                    "Invalid action id received from Kafka: " + actionIdText,
                     exception
             );
         }
+
+        log.info(
+                "Received action job from Kafka. Action id: {}",
+                actionId
+        );
+
+        processorService.processAction(actionId);
+
+        log.info(
+                "Action job processed successfully. Action id: {}",
+                actionId
+        );
     }
 }

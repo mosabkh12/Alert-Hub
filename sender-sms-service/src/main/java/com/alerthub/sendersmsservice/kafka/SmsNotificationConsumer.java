@@ -30,31 +30,22 @@ public class SmsNotificationConsumer {
             topics = "sms-notifications",
             groupId = "sender-sms-service"
     )
-    public void consumeSmsNotification(String payload) {
-        try {
-            SmsNotificationDto notification = objectMapper.readValue(
-                    payload,
-                    SmsNotificationDto.class
-            );
+    public void consumeSmsNotification(String payload) throws Exception {
+        SmsNotificationDto notification = objectMapper.readValue(
+                payload,
+                SmsNotificationDto.class
+        );
 
-            SmsRequest request = new SmsRequest();
-            request.setPhoneNumber(notification.getPhoneNumber());
-            request.setMessage(notification.getMessage());
+        SmsRequest request = new SmsRequest();
+        request.setPhoneNumber(notification.getPhoneNumber());
+        request.setMessage(notification.getMessage());
 
-            smsService.sendSms(request);
+        smsService.sendSms(request);
 
-            log.info(
-                    "SMS notification processed from Kafka. Action id: {}, phone: {}",
-                    notification.getActionId(),
-                    notification.getPhoneNumber()
-            );
-
-        } catch (Exception exception) {
-            log.error(
-                    "Failed to process SMS notification from Kafka. Payload: {}",
-                    payload,
-                    exception
-            );
-        }
+        log.info(
+                "SMS notification processed from Kafka. Action id: {}, phone: {}",
+                notification.getActionId(),
+                notification.getPhoneNumber()
+        );
     }
 }

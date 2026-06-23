@@ -30,32 +30,23 @@ public class EmailNotificationConsumer {
             topics = "email-notifications",
             groupId = "sender-email-service"
     )
-    public void consumeEmailNotification(String payload) {
-        try {
-            EmailNotificationDto notification =
-                    objectMapper.readValue(
-                            payload,
-                            EmailNotificationDto.class
-                    );
+    public void consumeEmailNotification(String payload) throws Exception {
+        EmailNotificationDto notification =
+                objectMapper.readValue(
+                        payload,
+                        EmailNotificationDto.class
+                );
 
-            EmailRequest request = new EmailRequest();
-            request.setRecipient(notification.getRecipient());
-            request.setMessage(notification.getMessage());
+        EmailRequest request = new EmailRequest();
+        request.setRecipient(notification.getRecipient());
+        request.setMessage(notification.getMessage());
 
-            emailService.sendEmail(request);
+        emailService.sendEmail(request);
 
-            log.info(
-                    "Email notification processed from Kafka. Action id: {}, recipient: {}",
-                    notification.getActionId(),
-                    notification.getRecipient()
-            );
-
-        } catch (Exception exception) {
-            log.error(
-                    "Failed to process email notification from Kafka. Payload: {}",
-                    payload,
-                    exception
-            );
-        }
+        log.info(
+                "Email notification processed from Kafka. Action id: {}, recipient: {}",
+                notification.getActionId(),
+                notification.getRecipient()
+        );
     }
 }
