@@ -2,6 +2,7 @@ package com.alerthub.actionservice.service;
 
 import com.alerthub.actionservice.entity.Action;
 import com.alerthub.actionservice.entity.ActionType;
+import com.alerthub.actionservice.kafka.ActionJobProducer;
 import com.alerthub.actionservice.repository.ActionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,12 +17,18 @@ import static org.mockito.Mockito.*;
 class ActionServiceTest {
 
     private ActionRepository actionRepository;
+    private ActionJobProducer actionJobProducer;
     private ActionService actionService;
 
     @BeforeEach
     void setUp() {
         actionRepository = mock(ActionRepository.class);
-        actionService = new ActionService(actionRepository);
+        actionJobProducer = mock(ActionJobProducer.class);
+
+        actionService = new ActionService(
+                actionRepository,
+                actionJobProducer
+        );
     }
 
     @Test
@@ -68,13 +75,15 @@ class ActionServiceTest {
     void getActionsByUserId_shouldReturnUserActions() {
         Action action = createAction(1L);
 
-        when(actionRepository.findByUserIdAndIsDeletedFalse(1001L)).thenReturn(List.of(action));
+        when(actionRepository.findByUserIdAndIsDeletedFalse(1001L))
+                .thenReturn(List.of(action));
 
         List<Action> result = actionService.getActionsByUserId(1001L);
 
         assertEquals(1, result.size());
         assertEquals(1001L, result.get(0).getUserId());
-        verify(actionRepository, times(1)).findByUserIdAndIsDeletedFalse(1001L);
+        verify(actionRepository, times(1))
+                .findByUserIdAndIsDeletedFalse(1001L);
     }
 
     @Test

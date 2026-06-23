@@ -3,18 +3,21 @@ package com.alerthub.actionservice.service;
 import com.alerthub.actionservice.entity.Action;
 import com.alerthub.actionservice.repository.ActionRepository;
 import org.springframework.stereotype.Service;
-
+import com.alerthub.actionservice.kafka.ActionJobProducer;
 import java.util.List;
 
 @Service
 public class ActionService {
 
     private final ActionRepository actionRepository;
-
-    public ActionService(ActionRepository actionRepository) {
+    private final ActionJobProducer actionJobProducer;
+    public ActionService(
+            ActionRepository actionRepository,
+            ActionJobProducer actionJobProducer
+    ) {
         this.actionRepository = actionRepository;
+        this.actionJobProducer = actionJobProducer;
     }
-
     public List<Action> getAllActions() {
         return actionRepository.findByIsDeletedFalse();
     }
@@ -70,4 +73,17 @@ public class ActionService {
         action.setIsDeleted(true);
         actionRepository.save(action);
     }
+    public void queueActionJob(Long actionId) {
+    Action action = getActionById(actionId);
+
+    if (Boolean.TRUE.equals(action.getIsDeleted())) {
+        throw new RuntimeException("Deleted action cannot be queued");
+    }
+
+    if (!Boolean.TRUE.equals(action.getIsEnabled())) {
+        throw new RuntimeException("Disabled action cannot be queued");
+    }
+
+    actionJobProducer.sendActionJob(actionId);
+}
 }

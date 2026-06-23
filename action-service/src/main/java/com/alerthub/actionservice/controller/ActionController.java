@@ -57,4 +57,10 @@ public class ActionController {
         actionService.deleteAction(id);
         return "Action deleted successfully";
     }
+    @PostMapping("/{id}/queue")
+    public String queueActionJob(@PathVariable Long id) {
+        actionService.queueActionJob(id);
+
+        return "Action job sent to Kafka successfully";
+    }
 }

@@ -1,16 +1,15 @@
 package com.alerthub.processorservice.service;
 
 import com.alerthub.processorservice.dto.ActionDto;
+import com.alerthub.processorservice.dto.LoggerClient;
 import com.alerthub.processorservice.dto.MetricDto;
 import com.alerthub.processorservice.dto.PlatformInformationDto;
 import com.alerthub.processorservice.dto.ProcessResultDto;
+import com.alerthub.processorservice.kafka.EmailNotificationProducer;
+import com.alerthub.processorservice.kafka.SmsNotificationProducer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import com.alerthub.processorservice.dto.EmailClient;
-import com.alerthub.processorservice.dto.SmsClient;
-import com.alerthub.processorservice.dto.LoggerClient;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -20,11 +19,8 @@ import java.util.List;
 public class ProcessorService {
 
     private final RestTemplate restTemplate;
-
-    private final EmailClient emailClient;
-
-    private final SmsClient smsClient;
-
+    private final EmailNotificationProducer emailNotificationProducer;
+    private final SmsNotificationProducer smsNotificationProducer;
     private final LoggerClient loggerClient;
 
     @Value("${services.action.url}")
@@ -36,10 +32,15 @@ public class ProcessorService {
     @Value("${services.loader.url}")
     private String loaderServiceUrl;
 
-    public ProcessorService(RestTemplate restTemplate,EmailClient emailClient,SmsClient smsClient,LoggerClient loggerClient) {
+    public ProcessorService(
+            RestTemplate restTemplate,
+            EmailNotificationProducer emailNotificationProducer,
+            SmsNotificationProducer smsNotificationProducer,
+            LoggerClient loggerClient
+    ) {
         this.restTemplate = restTemplate;
-        this.emailClient = emailClient;
-        this.smsClient = smsClient;
+        this.emailNotificationProducer = emailNotificationProducer;
+        this.smsNotificationProducer = smsNotificationProducer;
         this.loggerClient = loggerClient;
     }
 
@@ -76,13 +77,29 @@ public class ProcessorService {
         boolean satisfied = evaluateCondition(action.getConditionJson());
 
         if (satisfied && "EMAIL".equalsIgnoreCase(action.getActionType())) {
-            emailClient.sendEmail(action.getTo(), action.getMessage());
-            loggerClient.sendLog("INFO", "Message sent to Email service");
+            emailNotificationProducer.sendEmailNotification(
+                    action.getId(),
+                    action.getTo(),
+                    action.getMessage()
+            );
+
+            loggerClient.sendLog(
+                    "INFO",
+                    "Email notification sent to Kafka topic"
+            );
         }
 
         if (satisfied && "SMS".equalsIgnoreCase(action.getActionType())) {
-            smsClient.sendSms(action.getTo(), action.getMessage());
-            loggerClient.sendLog("INFO", "Message sent to SMS service");
+            smsNotificationProducer.sendSmsNotification(
+                    action.getId(),
+                    action.getTo(),
+                    action.getMessage()
+            );
+
+            loggerClient.sendLog(
+                    "INFO",
+                    "SMS notification sent to Kafka topic"
+            );
         }
 
         return new ProcessResultDto(
@@ -95,7 +112,6 @@ public class ProcessorService {
     }
 
     private boolean evaluateCondition(String conditionJson) {
-
         String cleaned = conditionJson
                 .replace(" ", "")
                 .replace("[[", "")
@@ -149,24 +165,27 @@ public class ProcessorService {
         List<PlatformInformationDto> data = Arrays.asList(dataArray);
 
         long count = data.stream()
-                .filter(item -> isWithinTimeFrame(item.getTimestamp(), metric.getTimeFrameHours()))
+                .filter(item -> isWithinTimeFrame(
+                        item.getTimestamp(),
+                        metric.getTimeFrameHours()
+                ))
                 .count();
 
         return count >= metric.getThreshold();
     }
 
-    private boolean isWithinTimeFrame(String timestampText, Integer timeFrameHours) {
+    private boolean isWithinTimeFrame(
+            String timestampText,
+            Integer timeFrameHours
+    ) {
         try {
             OffsetDateTime timestamp = OffsetDateTime.parse(timestampText);
-            OffsetDateTime fromTime = OffsetDateTime.now().minusHours(timeFrameHours);
+            OffsetDateTime fromTime =
+                    OffsetDateTime.now().minusHours(timeFrameHours);
+
             return timestamp.isAfter(fromTime);
-        } catch (Exception e) {
-            /*
-             * אם timestamp לא נקרא טוב, בשלב ראשון לא נכשיל את כל ה־Processor.
-             */
+        } catch (Exception exception) {
             return true;
         }
     }
-
-
 }

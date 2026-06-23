@@ -1,9 +1,10 @@
 package com.alerthub.processorservice.service;
 
 import com.alerthub.processorservice.dto.*;
+import com.alerthub.processorservice.kafka.EmailNotificationProducer;
+import com.alerthub.processorservice.kafka.SmsNotificationProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.OffsetDateTime;
@@ -14,22 +15,22 @@ import static org.mockito.Mockito.*;
 class ProcessorServiceTest {
 
     private RestTemplate restTemplate;
-    private EmailClient emailClient;
-    private SmsClient smsClient;
+    private EmailNotificationProducer emailNotificationProducer;
+    private SmsNotificationProducer smsNotificationProducer;
     private LoggerClient loggerClient;
     private ProcessorService processorService;
 
     @BeforeEach
     void setUp() {
         restTemplate = mock(RestTemplate.class);
-        emailClient = mock(EmailClient.class);
-        smsClient = mock(SmsClient.class);
+        emailNotificationProducer = mock(EmailNotificationProducer.class);
+        smsNotificationProducer = mock(SmsNotificationProducer.class);
         loggerClient = mock(LoggerClient.class);
 
         processorService = new ProcessorService(
                 restTemplate,
-                emailClient,
-                smsClient,
+                emailNotificationProducer,
+                smsNotificationProducer,
                 loggerClient
         );
 
@@ -39,9 +40,8 @@ class ProcessorServiceTest {
     }
 
     @Test
-    void processAction_whenEmailAndConditionTrue_shouldSendEmailAndLog() {
+    void processAction_whenEmailAndConditionTrue_shouldSendEmailToKafkaAndLog() {
         ActionDto action = createAction("EMAIL", true, false);
-
         MetricDto metric = createMetric();
 
         PlatformInformationDto info = new PlatformInformationDto();
@@ -68,13 +68,26 @@ class ProcessorServiceTest {
         assertEquals("EMAIL", result.getActionType());
         assertEquals("ameen@gmail.com", result.getRecipient());
 
-        verify(emailClient, times(1)).sendEmail("ameen@gmail.com", "Need to fix");
-        verify(smsClient, never()).sendSms(anyString(), anyString());
-        verify(loggerClient, times(1)).sendLog("INFO", "Message sent to Email service");
+        verify(emailNotificationProducer, times(1)).sendEmailNotification(
+                1L,
+                "ameen@gmail.com",
+                "Need to fix"
+        );
+
+        verify(smsNotificationProducer, never()).sendSmsNotification(
+                anyLong(),
+                anyString(),
+                anyString()
+        );
+
+        verify(loggerClient, times(1)).sendLog(
+                "INFO",
+                "Email notification sent to Kafka topic"
+        );
     }
 
     @Test
-    void processAction_whenSmsAndConditionTrue_shouldSendSmsAndLog() {
+    void processAction_whenSmsAndConditionTrue_shouldSendSmsToKafkaAndLog() {
         ActionDto action = createAction("SMS", true, false);
         action.setTo("0509999999");
         action.setMessage("Help me by SMS");
@@ -105,9 +118,22 @@ class ProcessorServiceTest {
         assertEquals("SMS", result.getActionType());
         assertEquals("0509999999", result.getRecipient());
 
-        verify(smsClient, times(1)).sendSms("0509999999", "Help me by SMS");
-        verify(emailClient, never()).sendEmail(anyString(), anyString());
-        verify(loggerClient, times(1)).sendLog("INFO", "Message sent to SMS service");
+        verify(smsNotificationProducer, times(1)).sendSmsNotification(
+                1L,
+                "0509999999",
+                "Help me by SMS"
+        );
+
+        verify(emailNotificationProducer, never()).sendEmailNotification(
+                anyLong(),
+                anyString(),
+                anyString()
+        );
+
+        verify(loggerClient, times(1)).sendLog(
+                "INFO",
+                "SMS notification sent to Kafka topic"
+        );
     }
 
     @Test
@@ -124,9 +150,11 @@ class ProcessorServiceTest {
         assertFalse(result.getConditionSatisfied());
         assertEquals("Action is disabled", result.getMessage());
 
-        verify(emailClient, never()).sendEmail(anyString(), anyString());
-        verify(smsClient, never()).sendSms(anyString(), anyString());
-        verify(loggerClient, never()).sendLog(anyString(), anyString());
+        verifyNoInteractions(
+                emailNotificationProducer,
+                smsNotificationProducer,
+                loggerClient
+        );
     }
 
     @Test
@@ -143,12 +171,18 @@ class ProcessorServiceTest {
         assertFalse(result.getConditionSatisfied());
         assertEquals("Action is deleted", result.getMessage());
 
-        verify(emailClient, never()).sendEmail(anyString(), anyString());
-        verify(smsClient, never()).sendSms(anyString(), anyString());
-        verify(loggerClient, never()).sendLog(anyString(), anyString());
+        verifyNoInteractions(
+                emailNotificationProducer,
+                smsNotificationProducer,
+                loggerClient
+        );
     }
 
-    private ActionDto createAction(String actionType, boolean enabled, boolean deleted) {
+    private ActionDto createAction(
+            String actionType,
+            boolean enabled,
+            boolean deleted
+    ) {
         ActionDto action = new ActionDto();
         action.setId(1L);
         action.setActionType(actionType);
@@ -168,13 +202,18 @@ class ProcessorServiceTest {
         metric.setTimeFrameHours(24);
         return metric;
     }
-    private void setPrivateField(Object target, String fieldName, Object value) {
+
+    private void setPrivateField(
+            Object target,
+            String fieldName,
+            Object value
+    ) {
         try {
             var field = target.getClass().getDeclaredField(fieldName);
             field.setAccessible(true);
             field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
         }
     }
 }
