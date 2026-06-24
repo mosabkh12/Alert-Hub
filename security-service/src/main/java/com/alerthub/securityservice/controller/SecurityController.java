@@ -1,14 +1,12 @@
 package com.alerthub.securityservice.controller;
 
-import com.alerthub.securityservice.dto.GrantPermissionRequest;
-import com.alerthub.securityservice.dto.PermissionCheckResponse;
-import com.alerthub.securityservice.dto.PermissionResponse;
+import com.alerthub.securityservice.dto.LoginRequest;
+import com.alerthub.securityservice.dto.LoginResponse;
 import com.alerthub.securityservice.service.SecurityService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
+import com.alerthub.securityservice.dto.TokenValidationResponse;
+import org.springframework.http.HttpHeaders;
 @RestController
 @RequestMapping("/api/security")
 public class SecurityController {
@@ -19,26 +17,22 @@ public class SecurityController {
         this.securityService = securityService;
     }
 
-    @GetMapping("/permissions/{userId}")
-    public ResponseEntity<List<String>> getUserPermissions(@PathVariable Long userId) {
-        return ResponseEntity.ok(securityService.getUserPermissions(userId));
-    }
-
-    @GetMapping("/has-permission")
-    public ResponseEntity<PermissionCheckResponse> hasPermission(
-            @RequestParam Long userId,
-            @RequestParam String permission
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @RequestBody LoginRequest request
     ) {
-        return ResponseEntity.ok(securityService.hasPermission(userId, permission));
+        return ResponseEntity.ok(
+                securityService.login(request)
+        );
+    }
+    @GetMapping("/validate")
+    public ResponseEntity<TokenValidationResponse> validateToken(
+            @RequestHeader(HttpHeaders.AUTHORIZATION)
+            String authorizationHeader
+    ) {
+        return ResponseEntity.ok(
+                securityService.validateToken(authorizationHeader)
+        );
     }
 
-    @PostMapping("/permissions/grant")
-    public ResponseEntity<PermissionResponse> grantPermission(@RequestBody GrantPermissionRequest request) {
-        return ResponseEntity.ok(securityService.grantPermission(request));
-    }
-
-    @DeleteMapping("/permissions/revoke")
-    public ResponseEntity<PermissionResponse> revokePermission(@RequestBody GrantPermissionRequest request) {
-        return ResponseEntity.ok(securityService.revokePermission(request));
-    }
 }

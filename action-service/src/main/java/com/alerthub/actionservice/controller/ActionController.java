@@ -1,8 +1,10 @@
 package com.alerthub.actionservice.controller;
 
 import com.alerthub.actionservice.entity.Action;
+import com.alerthub.actionservice.security.JwtPermissionValidator;
 import com.alerthub.actionservice.service.ActionService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,9 +14,14 @@ import java.util.List;
 public class ActionController {
 
     private final ActionService actionService;
+    private final JwtPermissionValidator jwtPermissionValidator;
 
-    public ActionController(ActionService actionService) {
+    public ActionController(
+            ActionService actionService,
+            JwtPermissionValidator jwtPermissionValidator
+    ) {
         this.actionService = actionService;
+        this.jwtPermissionValidator = jwtPermissionValidator;
     }
 
     @GetMapping
@@ -33,12 +40,26 @@ public class ActionController {
     }
 
     @PostMapping
-    public Action createAction(@Valid @RequestBody Action action) {
+    public Action createAction(
+            @RequestHeader(
+                    value = HttpHeaders.AUTHORIZATION,
+                    required = false
+            ) String authorizationHeader,
+            @Valid @RequestBody Action action
+    ) {
+        jwtPermissionValidator.requirePermission(
+                authorizationHeader,
+                "createAction"
+        );
+
         return actionService.createAction(action);
     }
 
     @PutMapping("/{id}")
-    public Action updateAction(@PathVariable Long id, @Valid @RequestBody Action action) {
+    public Action updateAction(
+            @PathVariable Long id,
+            @Valid @RequestBody Action action
+    ) {
         return actionService.updateAction(id, action);
     }
 
@@ -57,6 +78,7 @@ public class ActionController {
         actionService.deleteAction(id);
         return "Action deleted successfully";
     }
+
     @PostMapping("/{id}/queue")
     public String queueActionJob(@PathVariable Long id) {
         actionService.queueActionJob(id);

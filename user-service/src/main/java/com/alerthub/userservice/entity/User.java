@@ -2,6 +2,7 @@ package com.alerthub.userservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "users")
@@ -21,6 +22,8 @@ public class User {
     private String email;
 
     private String phone;
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 
     private String password;
 }
